@@ -1,27 +1,107 @@
 #include <FileIO.h>
+#include <Adafruit_NeoPixel.h>
 
-const int latchPin = 10;
-const int clockPin = 13;
-const int dataPin = 11;
+#define OUTPUT_COUNT 1
 
-const int red = 8;
-const int amber = 4;
-const int green = 2;
-
-const byte testValues[6] = { 128, 64, 32, 8, 4, 2 };
+#define NEOPIXEL_OUTPUT_PIN_1 6
+#define NEOPIXEL_OUTPUT_PIN_2 7
+#define NEOPIXEL_OUTPUT_PIN_3 8
+#define NEOPIXEL_OUTPUT_PIN_4 9
+#define RED { 16, 0, 0 }
+#define YELLOW { 16, 16, 0 }
+#define GREEN { 0, 16, 0 }
 
 const String jobDirPrefix = "/mnt/sd/job-";
 const String jobStatusFileName = "status.txt";
 const String jobRunningFileName = "running.txt";
 
+Adafruit_NeoPixel strip[4] = {
+    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_1, NEO_GRB + NEO_KHZ800),
+    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_2, NEO_GRB + NEO_KHZ800),
+    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_3, NEO_GRB + NEO_KHZ800),
+    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_4, NEO_GRB + NEO_KHZ800) 
+};
+
+byte stateColors[3][3] = { RED, YELLOW, GREEN };
+
+byte icons[3][2][8] = {
+  {
+    {
+      B00111100,
+      B01111110,
+      B11111111,
+      B11111111,
+      B11111111,
+      B11111111,
+      B01111110,
+      B00111100
+    },
+    {
+      B11000011,
+      B10000001,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B10000001,
+      B11000011
+    }
+  },
+  {
+    {
+      B00111100,
+      B01111110,
+      B11111111,
+      B11111111,
+      B11111111,
+      B11111111,
+      B01111110,
+      B00111100
+    },
+    {
+      B11000011,
+      B10000001,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B10000001,
+      B11000011
+    }
+  },
+  {
+    {
+      B00111100,
+      B01111110,
+      B11111111,
+      B11111111,
+      B11111111,
+      B11111111,
+      B01111110,
+      B00111100
+    },
+    {
+      B11000011,
+      B10000001,
+      B00000000,
+      B00000000,
+      B00000000,
+      B00000000,
+      B10000001,
+      B11000011
+    }
+  }
+};
+
 void setup() {
-  
-  pinMode(latchPin, OUTPUT);
-  pinMode(dataPin, OUTPUT);  
-  pinMode(clockPin, OUTPUT);
   
   Bridge.begin();
   FileSystem.begin();
+  
+  for (int index = 0; index < OUTPUT_COUNT; index++) {
+    strip[index].begin();
+    strip[index].show();
+  }
   
   selfTest();
   
@@ -38,19 +118,32 @@ void loop() {
 
 void displayJobStatus(byte toggle) {
   
-  byte status3 = calculateJobStatus(3, toggle);
-  byte status2 = calculateJobStatus(2, toggle);
-  byte lsb = status3 + (status2 * 16);
-  byte status1 = calculateJobStatus(1, toggle);
-  byte status0 = calculateJobStatus(0, toggle);
-  byte msb = status1 + (status0 * 16);
-  
-  refresh(msb, lsb);
+  for (int jobNo = 0; jobNo < OUTPUT_COUNT; jobNo++) {
+    byte state = retrieveJobStatus(jobNo);
+    byte running = retrieveJobRunning(jobNo);
+    byte phase = running * toggle;
+    updateDisplay(jobNo, state, phase);
+  }
 
 }
 
-byte calculateJobStatus(int jobNo, byte toggle) {
-  return retrieveJobStatus(jobNo) * (retrieveJobRunning(jobNo) == 0 ? 1 : toggle);
+void updateDisplay(byte displayNo, byte state, byte phase) {
+  
+  for (byte rowNo = 0; rowNo < 8; rowNo++) {
+    byte row = icons[state][phase][rowNo];
+    for (byte colNo = 0; colNo < 8; colNo++) {
+      byte pixelNo = (rowNo * 8) + colNo;
+      if ((row & (1 << colNo)) != 0) {
+        strip[displayNo].setPixelColor(pixelNo, strip[displayNo].Color(stateColors[state][0], stateColors[state][1], stateColors[state][2]));
+      }
+      else {
+        strip[displayNo].setPixelColor(pixelNo, strip[displayNo].Color(0, 0, 0));
+      }
+    }
+  }
+  
+  strip[displayNo].show();  
+  
 }
 
 byte retrieveJobStatus(int jobNo) {
@@ -80,30 +173,6 @@ byte retrieveJobRunning(int jobNo) {
 }
 
 void selfTest() {
-  
-  refresh(0, 0);
-  
-  for (int index = 0; index < 12; index++) {
-    if (index < 6) {
-      refresh(testValues[index], 0);
-    }
-    else {
-      refresh(0, testValues[index - 6]);
-    }
-    delay(500);
-  } 
-  
-  refresh(0, 0);
-  delay(2000);
-  
-}
-
-void refresh(byte msb, byte lsb) {
-  
-  digitalWrite(latchPin, LOW);
-  shiftOut(dataPin, clockPin, LSBFIRST, lsb);
-  shiftOut(dataPin, clockPin, LSBFIRST, msb);
-  digitalWrite(latchPin, HIGH);
   
 }
 
