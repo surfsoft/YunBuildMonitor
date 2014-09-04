@@ -35,4 +35,13 @@ module neoMatrixMount(sizeX, sizeY) {
 		  cube([10, 4, 2], center=true);
 	}
 
+
+
+	if (sizeX > 1) {
+		for (panelNo = [ 1 : sizeX - 1 ]) {
+			translate([((panelNo - 1) * unitLength) , 0, 0])
+			  cube([mountWidth, width, depth], center=true);
+		}
+	}
+
 }
