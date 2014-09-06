@@ -39,7 +39,7 @@ module neoMatrixMount(sizeX, sizeY) {
 
 	if (sizeX > 1) {
 		for (panelNo = [ 1 : sizeX - 1 ]) {
-			translate([((panelNo - 1) * unitLength) , 0, 0])
+			translate([- (length / 2) + (panelNo * unitLength), 0, 0])
 			  cube([mountWidth, width, depth], center=true);
 		}
 	}
