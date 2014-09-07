@@ -1,174 +1,155 @@
 #include <FileIO.h>
 #include <Adafruit_NeoPixel.h>
 
-#define OUTPUT_COUNT 1
+#define NEOPIXEL_OUTPUT_PIN 6
 
-#define NEOPIXEL_OUTPUT_PIN_1 6
-#define NEOPIXEL_OUTPUT_PIN_2 7
-#define NEOPIXEL_OUTPUT_PIN_3 8
-#define NEOPIXEL_OUTPUT_PIN_4 9
-#define RED { 16, 0, 0 }
-#define YELLOW { 16, 16, 0 }
-#define GREEN { 0, 16, 0 }
+#define FAILED { 16, 0, 0 }
+#define TESTS_FAILED { 0, 16, 16 }
+#define PASSED { 0, 16, 0 }
 
+const String panelLayoutFile = "/mnt/sd/layout.txt";
 const String jobDirPrefix = "/mnt/sd/job-";
 const String jobStatusFileName = "status.txt";
 const String jobRunningFileName = "running.txt";
 
-Adafruit_NeoPixel strip[4] = {
-    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_1, NEO_GRB + NEO_KHZ800),
-    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_2, NEO_GRB + NEO_KHZ800),
-    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_3, NEO_GRB + NEO_KHZ800),
-    Adafruit_NeoPixel(64, NEOPIXEL_OUTPUT_PIN_4, NEO_GRB + NEO_KHZ800) 
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(128, NEOPIXEL_OUTPUT_PIN, NEO_GRB + NEO_KHZ800);
+
+int baseIndexes[2][4] = {
+  { 100, 96, 36, 32 },
+  { 68, 64, 4, 0 }
 };
 
-byte stateColors[3][3] = { RED, YELLOW, GREEN };
-
-byte icons[3][2][8] = {
-  {
-    {
-      B00111100,
-      B01111110,
-      B11111111,
-      B11111111,
-      B11111111,
-      B11111111,
-      B01111110,
-      B00111100
-    },
-    {
-      B11000011,
-      B10000001,
-      B00000000,
-      B00000000,
-      B00000000,
-      B00000000,
-      B10000001,
-      B11000011
-    }
-  },
-  {
-    {
-      B00111100,
-      B01111110,
-      B11111111,
-      B11111111,
-      B11111111,
-      B11111111,
-      B01111110,
-      B00111100
-    },
-    {
-      B11000011,
-      B10000001,
-      B00000000,
-      B00000000,
-      B00000000,
-      B00000000,
-      B10000001,
-      B11000011
-    }
-  },
-  {
-    {
-      B00111100,
-      B01111110,
-      B11111111,
-      B11111111,
-      B11111111,
-      B11111111,
-      B01111110,
-      B00111100
-    },
-    {
-      B11000011,
-      B10000001,
-      B00000000,
-      B00000000,
-      B00000000,
-      B00000000,
-      B10000001,
-      B11000011
-    }
-  }
-};
+byte stateColors[3][3] = { FAILED, TESTS_FAILED, PASSED };
 
 void setup() {
   
   Bridge.begin();
   FileSystem.begin();
   
-  for (int index = 0; index < OUTPUT_COUNT; index++) {
-    strip[index].begin();
-    strip[index].show();
-  }
+  strip.begin();
+  strip.show();
   
   selfTest();
   
 }
 
 void loop() {
-  
-  displayJobStatus(1);  
-  delay(1000);
-  displayJobStatus(0);  
-  delay(1000);
-  
-}
 
-void displayJobStatus(byte toggle) {
-  
-  for (int jobNo = 0; jobNo < OUTPUT_COUNT; jobNo++) {
-    byte state = retrieveJobStatus(jobNo);
-    byte running = retrieveJobRunning(jobNo);
-    byte phase = running * toggle;
-    updateDisplay(jobNo, state, phase);
+  for (int phase = 0; phase <= 1; phase++) {  
+    for (int step = 1; step <= 8; step++) {
+      displayJobStatus(phase, step);  
+      delay(30);
+    }
   }
-
+  
 }
 
-void updateDisplay(byte displayNo, byte state, byte phase) {
+void displayJobStatus(int phase, int step) {
   
-  for (byte rowNo = 0; rowNo < 8; rowNo++) {
-    byte row = icons[state][phase][rowNo];
-    for (byte colNo = 0; colNo < 8; colNo++) {
-      byte pixelNo = (rowNo * 8) + colNo;
-      if ((row & (1 << colNo)) != 0) {
-        strip[displayNo].setPixelColor(pixelNo, strip[displayNo].Color(stateColors[state][0], stateColors[state][1], stateColors[state][2]));
+  int state[8] = {
+    retrieveJobStatus(0),
+    retrieveJobStatus(1),
+    retrieveJobStatus(2),
+    retrieveJobStatus(3),
+    retrieveJobStatus(4),
+    retrieveJobStatus(5),
+    retrieveJobStatus(6),
+    retrieveJobStatus(7)
+  };
+  
+  byte running[8] = {
+    retrieveJobRunning(0),
+    retrieveJobRunning(1),
+    retrieveJobRunning(2),
+    retrieveJobRunning(3),
+    retrieveJobRunning(4),
+    retrieveJobRunning(5),
+    retrieveJobRunning(6),
+    retrieveJobRunning(7)
+  };
+  
+  File file = openR(panelLayoutFile);
+  if (file) {
+    for (byte row = 0; row <= 1; row++) {
+      for (byte col = 0; col <= 3; col++) {
+        byte jobNo = file.read() - 48;
+        updateCell(baseIndexes[row][col], state[jobNo], running[jobNo], phase, step);
+      }
+      file.read(); // Read the trailing LF
+    }
+    file.close();
+    strip.show();
+  }
+  
+}
+
+void updateCell(int baseIndex, int state, byte running, int phase, int step) {
+  
+  for (byte rowIndex = 0; rowIndex <= 3; rowIndex++) {
+    for (byte colIndex = 0; colIndex <= 3; colIndex++) {
+      int pixelNo = baseIndex + (8 * (3 - rowIndex)) + ( 3 - colIndex);
+      if (state >= 0) {
+        if (running == 0) {
+          strip.setPixelColor(pixelNo, strip.Color(stateColors[state][0],
+            stateColors[state][1],
+            stateColors[state][2]));
+        }
+        else {
+          int red = stateColors[state][0];
+          int green = stateColors[state][1];
+          int blue = stateColors[state][2];
+          if (phase == 0) {
+            red = red - (step * 2);
+            green = green - (step * 2);
+            blue = blue - (step * 2);
+          }
+          else {
+            red = red - 16 + (step * 2);
+            green = green - 16 + (step * 2);
+            blue = blue - 16 + (step * 2);
+          }
+          if (red < 0) red = 0;
+          if (green < 0) green = 0;
+          if (blue < 0) blue = 0;
+          strip.setPixelColor(pixelNo, strip.Color(red, green, blue));
+        }
       }
       else {
-        strip[displayNo].setPixelColor(pixelNo, strip[displayNo].Color(0, 0, 0));
+        strip.setPixelColor(pixelNo, strip.Color(0, 0, 0));
       }
     }
   }
   
-  strip[displayNo].show();  
-  
 }
 
-byte retrieveJobStatus(int jobNo) {
+int retrieveJobStatus(int jobNo) {
   
   File file = openR(getJobStatusFilePath(jobNo));
   char statusChar;
   if (file) {
-    statusChar = file.read();
+    statusChar = file.read() - 48;
     file.close();
+    return statusChar;
   }
   else {
-    statusChar = 48;
+    return -1;
   }
-  
-  return (byte) statusChar - 48;
   
 }
 
 byte retrieveJobRunning(int jobNo) {
   
   File file = openR(getJobRunningFilePath(jobNo));
-  char statusChar = file.read();
-  file.close();
+  char statusChar;
+  if (file) {
+    statusChar = file.read() - 48;
+    file.close();
+  }
+  else {
+    statusChar = 0;
+  }
   
-  return (byte) statusChar - 48;
+  return (byte) statusChar;
   
 }
 
@@ -195,15 +176,5 @@ File openR(String path) {
   filename[path.length()] = 0;
 
   return FileSystem.open(filename);  
-  
-}
-
-File openW(String path) {
-  
-  char filename[path.length() + 1];
-  path.toCharArray(filename, path.length() + 1);
-  filename[path.length()] = 0;
-
-  return FileSystem.open(filename, FILE_WRITE);  
   
 }
