@@ -8,9 +8,7 @@
 #define PASSED { 0, 16, 0 }
 
 const String panelLayoutFile = "/mnt/sd/layout.txt";
-const String jobDirPrefix = "/mnt/sd/job-";
-const String jobStatusFileName = "status.txt";
-const String jobRunningFileName = "running.txt";
+const String jobStatusFileName = "/mnt/sd/status.txt";
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(128, NEOPIXEL_OUTPUT_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -36,8 +34,8 @@ void setup() {
 void loop() {
 
   for (int phase = 0; phase <= 1; phase++) {  
-    for (int step = 1; step <= 8; step++) {
-      displayJobStatus(phase, step);  
+    for (int step = 1; step <= 4; step++) {
+      displayJobStatus(phase, step * 2);  
       delay(30);
     }
   }
@@ -124,10 +122,14 @@ void updateCell(int baseIndex, int state, byte running, int phase, int step) {
 
 int retrieveJobStatus(int jobNo) {
   
-  File file = openR(getJobStatusFilePath(jobNo));
+  File file = openR(jobStatusFileName);
   char statusChar;
   if (file) {
-    statusChar = file.read() - 48;
+    int index = (jobNo * 2) + 1;
+    while (index > 0) {
+      index--;
+      statusChar = file.read() - 48;
+    }
     file.close();
     return statusChar;
   }
@@ -139,10 +141,14 @@ int retrieveJobStatus(int jobNo) {
 
 byte retrieveJobRunning(int jobNo) {
   
-  File file = openR(getJobRunningFilePath(jobNo));
+  File file = openR(jobStatusFileName);
   char statusChar;
   if (file) {
-    statusChar = file.read() - 48;
+    int index = (jobNo + 1) * 2;
+    while (index > 0) {
+      index--;
+      statusChar = file.read() - 48;
+    }
     file.close();
   }
   else {
@@ -155,18 +161,6 @@ byte retrieveJobRunning(int jobNo) {
 
 void selfTest() {
   
-}
-
-String getJobStatusFilePath(int jobNo) {
-  return getJobDir(jobNo) + "/" + jobStatusFileName;
-}
-
-String getJobRunningFilePath(int jobNo) {
-  return getJobDir(jobNo) + "/" + jobRunningFileName;
-}
-
-String getJobDir(int jobNo) {
-  return jobDirPrefix + String(jobNo);
 }
 
 File openR(String path) {

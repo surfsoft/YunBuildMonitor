@@ -1,0 +1,5 @@
+http://jenkins.cyanogenmod.com/job/android
+http://jenkins.cyanogenmod.com/job/cm-build-all
+http://jenkins.cyanogenmod.com/job/cm_daily_build_cycle
+http://ci.angularjs.org/job/angular-phonecat%20auto-update
+http://ci.angularjs.org/job/angularjs.org

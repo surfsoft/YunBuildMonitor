@@ -1,7 +1,3 @@
-# TODO needs re-writing for the new structure
-echo "This setup script has not, yet, been updated for the NeoPixel version of the build monitor."
-exit 1
-
 SDCARD=/mnt/sd
 
 if test ! -d $SDCARD
@@ -76,5 +72,8 @@ echo
 echo "Job directories set up. Don't forget to edit url.txt in each to change the job being montored."
 echo "You will also need to add the following crontab entries (use crontab -e):"
 echo
-echo "    * * * * * $SDCARD/refresh-all.sh"
+echo "    * * * * * $SDCARD/refresh.sh 0"
+echo "    * * * * * $SDCARD/refresh.sh 1"
+echo "    * * * * * $SDCARD/refresh.sh 2"
+echo "    * * * * * $SDCARD/refresh.sh 3"
 echo
