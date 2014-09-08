@@ -134,6 +134,7 @@ int retrieveJobStatus(int jobNo) {
     return statusChar;
   }
   else {
+    file.close();
     return -1;
   }
   
@@ -152,6 +153,7 @@ byte retrieveJobRunning(int jobNo) {
     file.close();
   }
   else {
+    file.close();
     statusChar = 0;
   }
   
