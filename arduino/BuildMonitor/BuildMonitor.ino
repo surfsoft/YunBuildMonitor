@@ -17,6 +17,9 @@ int baseIndexes[2][4] = {
   { 68, 64, 4, 0 }
 };
 
+int state[8];
+byte running[8];
+
 byte stateColors[3][3] = { FAILED, TESTS_FAILED, PASSED };
 
 void setup() {
@@ -32,39 +35,23 @@ void setup() {
 }
 
 void loop() {
+  
+  for (int jobNo = 0; jobNo < 8; jobNo++) {
+    state[jobNo] = retrieveJobStatus(jobNo);
+    running[jobNo] = retrieveJobRunning(jobNo);
+  }
 
   for (int phase = 0; phase <= 1; phase++) {  
-    for (int step = 1; step <= 4; step++) {
-      displayJobStatus(phase, step * 2);  
-      delay(30);
+    for (int step = 1; step <= 8; step++) {
+      displayJobStatus(phase, step);  
+      delay(40);
     }
+    delay((phase + 1) * 500);
   }
   
 }
 
 void displayJobStatus(int phase, int step) {
-  
-  int state[8] = {
-    retrieveJobStatus(0),
-    retrieveJobStatus(1),
-    retrieveJobStatus(2),
-    retrieveJobStatus(3),
-    retrieveJobStatus(4),
-    retrieveJobStatus(5),
-    retrieveJobStatus(6),
-    retrieveJobStatus(7)
-  };
-  
-  byte running[8] = {
-    retrieveJobRunning(0),
-    retrieveJobRunning(1),
-    retrieveJobRunning(2),
-    retrieveJobRunning(3),
-    retrieveJobRunning(4),
-    retrieveJobRunning(5),
-    retrieveJobRunning(6),
-    retrieveJobRunning(7)
-  };
   
   File file = openR(panelLayoutFile);
   if (file) {
